@@ -22,7 +22,7 @@ sed -i '/location \/claw\/management\//i\
 \
     # music_gen API代理\
     location /music/api/ {\
-        proxy_pass http://127.0.0.1:5000/;\
+        proxy_pass http://127.0.0.1:5000/api/;\
         proxy_set_header Host $host;\
         proxy_set_header X-Real-IP $remote_addr;\
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\
@@ -43,7 +43,7 @@ sed -i '/location \/claw\/management\//i\
 \
     # music_gen API代理\
     location /music/api/ {\
-        proxy_pass http://127.0.0.1:5000/;\
+        proxy_pass http://127.0.0.1:5000/api/;\
         proxy_set_header Host $host;\
         proxy_set_header X-Real-IP $remote_addr;\
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\

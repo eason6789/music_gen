@@ -1,17 +1,23 @@
 import os
 import uuid
 import requests
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import base64
 from config import Config
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../frontend', static_url_path='')
 CORS(app)
+
+# 本地开发时从 / 提供前端页面
+@app.route('/')
+def serve_frontend():
+    return send_from_directory(app.static_folder, 'index.html')
 
 # MiniMax API 配置
 MINIMAX_API_KEY = Config.MINIMAX_API_KEY
 MINIMAX_API_URL = 'https://api.minimaxi.com/v1/music_generation'
+MINIMAX_COVER_PREPROCESS_URL = 'https://api.minimaxi.com/v1/music_cover_preprocess'
 
 
 @app.route('/api/health', methods=['GET'])
@@ -37,8 +43,15 @@ def generate_music():
         data = request.get_json()
         mode = data.get('mode')
 
+        headers = {
+            'Authorization': f'Bearer {MINIMAX_API_KEY}',
+            'Content-Type': 'application/json'
+        }
+
         if mode == 'description':
             # 模式1: 纯描述生成
+            # 注意: is_instrumental=True 在 MiniMax API 上有 bug，会导致请求挂起无响应
+            # 解决方案: 使用 is_instrumental=False + 最小歌词标记 [Instrumental]
             description = data.get('description', '')
             prompt_length = data.get('prompt_length', '500')
 
@@ -53,7 +66,8 @@ def generate_music():
             payload = {
                 'model': 'music-2.6',
                 'prompt': description,
-                'is_instrumental': True,
+                'is_instrumental': False,
+                'lyrics': '[Instrumental]\n',
                 'output_format': 'url',
                 'audio_setting': {
                     'sample_rate': 44100,
@@ -85,7 +99,7 @@ def generate_music():
             }
 
         elif mode == 'cover':
-            # 模式3: AI翻唱
+            # 模式3: AI翻唱 — 两步流程: 先预处理, 再生成
             audio_base64 = data.get('audio_base64', '')
             prompt = data.get('prompt', '')
             lyrics = data.get('lyrics')
@@ -96,11 +110,36 @@ def generate_music():
             if not prompt:
                 return jsonify({'error': '请输入目标翻唱风格描述'}), 400
 
-            # 构建翻唱请求
+            # 第一步: 音频预处理
+            preprocess_payload = {
+                'model': 'music-cover',
+                'audio_base64': audio_base64
+            }
+
+            preprocess_resp = requests.post(
+                MINIMAX_COVER_PREPROCESS_URL,
+                headers=headers,
+                json=preprocess_payload,
+                timeout=30,
+                proxies={'http': None, 'https': None}
+            )
+
+            preprocess_result = preprocess_resp.json()
+            if 'base_resp' in preprocess_result and preprocess_result['base_resp'].get('status_code') != 0:
+                return jsonify({
+                    'error': f'音频预处理失败: {preprocess_result["base_resp"].get("status_msg", "未知错误")}'
+                }), 400
+
+            cover_feature_id = preprocess_result.get('cover_feature_id')
+            audio_duration = preprocess_result.get('audio_duration')
+            formatted_lyrics = preprocess_result.get('formatted_lyrics', '')
+
+            # 第二步: 翻唱生成
             payload = {
                 'model': 'music-cover',
                 'prompt': prompt,
-                'audio_base64': audio_base64,
+                'cover_feature_id': cover_feature_id,
+                'audio_duration': audio_duration,
                 'output_format': 'url',
                 'audio_setting': {
                     'sample_rate': 44100,
@@ -109,24 +148,22 @@ def generate_music():
                 }
             }
 
-            # 如果提供了歌词，添加到请求中
+            # 使用用户提供的歌词，否则使用自动提取的歌词
             if lyrics:
                 payload['lyrics'] = lyrics
+            elif formatted_lyrics:
+                payload['lyrics'] = formatted_lyrics
 
         else:
             return jsonify({'error': '无效的mode，请使用 description、lyrics 或 cover'}), 400
 
         # 调用MiniMax API
-        headers = {
-            'Authorization': f'Bearer {MINIMAX_API_KEY}',
-            'Content-Type': 'application/json'
-        }
-
         response = requests.post(
             MINIMAX_API_URL,
             headers=headers,
             json=payload,
-            timeout=180  # 音乐生成可能需要较长时间
+            timeout=90,  # 音乐生成通常 25-60 秒,90s 足够
+            proxies={'http': None, 'https': None}  # 绕过系统代理,避免proxy连接错误
         )
 
         result = response.json()

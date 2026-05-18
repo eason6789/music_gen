@@ -356,7 +356,7 @@
         <div class="tabs">
             <button class="tab active" data-tab="description">📝 描述模式</button>
             <button class="tab" data-tab="lyrics">🎤 歌词模式</button>
-            <button class="tab" data-tab="cover">🎙️ AI翻唱</button>
+            <!-- <button class="tab" data-tab="cover">🎙️ AI翻唱</button> -->
         </div>
 
         <div class="content">
@@ -395,7 +395,8 @@
                 </div>
             </div>
 
-            <!-- AI翻唱模式 -->
+            <!-- AI翻唱模式 (MiniMax API暂不支持, 暂时隐藏) -->
+            <!--
             <div id="cover-tab" class="tab-content">
                 <div class="form-group">
                     <label>上传原曲音频 <span style="color: #e74c3c; font-weight: normal;">*必填</span></label>
@@ -417,6 +418,7 @@
                     <textarea id="cover-lyrics" placeholder="如果想修改歌词，可以在这里输入新歌词（10-1000字符）&#10;不填则自动从原曲提取"></textarea>
                 </div>
             </div>
+            -->
 
             <button id="submit-btn" class="submit-btn">🚀 开始生成</button>
 
@@ -442,13 +444,34 @@
     </div>
 
     <script>
+        // 自动检测API路径: 独立域名用 /api, 子目录部署用 /music/api
+        const API_BASE = window.location.pathname.startsWith('/music_gen/') ? '/music/api' : '/api';
+
         // Tab切换
+        let currentTab = 'description';
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', () => {
+                const newTab = tab.dataset.tab;
+                if (currentTab === newTab) return;
+
+                // 清除其他tab的内容(同一tab保留)
+                if (currentTab === 'description') {
+                    document.getElementById('description').value = '';
+                    document.getElementById('desc-count').textContent = '0';
+                } else if (currentTab === 'lyrics') {
+                    document.getElementById('song-name').value = '';
+                    document.getElementById('lyrics').value = '';
+                }
+
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                 tab.classList.add('active');
-                document.getElementById(tab.dataset.tab + '-tab').classList.add('active');
+                document.getElementById(newTab + '-tab').classList.add('active');
+                currentTab = newTab;
+
+                // 清除结果显示
+                errorEl.classList.remove('show');
+                resultEl.classList.remove('show');
             });
         });
 
@@ -519,7 +542,7 @@
                 loading.classList.add('show');
 
                 try {
-                    const response = await fetch('/music/api/generate', {
+                    const response = await fetch(`${API_BASE}/generate`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -529,8 +552,12 @@
                         })
                     });
 
-                    const data = await response.json();
-                    handleResponse(data);
+                    if (!response.ok && response.status >= 500) {
+                        showError(`服务器错误 (${response.status})，请稍后重试`);
+                    } else {
+                        const data = await parseJSON(response);
+                        handleResponse(data);
+                    }
                 } catch (e) {
                     showError('请求失败: ' + e.message);
                 } finally {
@@ -551,7 +578,7 @@
                 loading.classList.add('show');
 
                 try {
-                    const response = await fetch('/music/api/generate', {
+                    const response = await fetch(`${API_BASE}/generate`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -561,8 +588,12 @@
                         })
                     });
 
-                    const data = await response.json();
-                    handleResponse(data);
+                    if (!response.ok && response.status >= 500) {
+                        showError(`服务器错误 (${response.status})，请稍后重试`);
+                    } else {
+                        const data = await parseJSON(response);
+                        handleResponse(data);
+                    }
                 } catch (e) {
                     showError('请求失败: ' + e.message);
                 } finally {
@@ -570,43 +601,8 @@
                     loading.classList.remove('show');
                 }
 
-            } else if (activeTab === 'cover') {
-                const coverStyle = document.getElementById('cover-style').value.trim();
-                const coverLyrics = document.getElementById('cover-lyrics').value.trim();
-
-                if (!coverAudioData) {
-                    showError('请上传原曲音频');
-                    return;
-                }
-                if (!coverStyle) {
-                    showError('请输入目标翻唱风格描述');
-                    return;
-                }
-
-                submitBtn.disabled = true;
-                loading.classList.add('show');
-
-                try {
-                    const response = await fetch('/music/api/generate', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            mode: 'cover',
-                            audio_base64: coverAudioData,
-                            prompt: coverStyle,
-                            lyrics: coverLyrics || null
-                        })
-                    });
-
-                    const data = await response.json();
-                    handleResponse(data);
-                } catch (e) {
-                    showError('请求失败: ' + e.message);
-                } finally {
-                    submitBtn.disabled = false;
-                    loading.classList.remove('show');
-                }
-            }
+            // AI翻唱暂时隐藏，MiniMax API的cover模型需要未公开的内部参数
+            // } else if (activeTab === 'cover') { ... }
         });
 
         function handleResponse(data) {
@@ -618,6 +614,15 @@
                 showError('音乐正在生成中，请稍后刷新重试');
             } else {
                 showError('生成失败，请重试');
+            }
+        }
+
+        async function parseJSON(response) {
+            const text = await response.text();
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                throw new Error('服务器返回异常，请稍后重试');
             }
         }
 

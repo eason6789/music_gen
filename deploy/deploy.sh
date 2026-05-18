@@ -56,7 +56,7 @@ sshpass -p '*7;Vf3@BkrzD,g+u' ssh -o StrictHostKeyChecking=no -p $REMOTE_PORT $R
     sleep 2
 
     # 检查服务状态
-    if curl -s http://localhost:5000/health > /dev/null; then
+    if curl -s http://localhost:5000/api/health > /dev/null; then
         echo "✅ 后端服务运行正常"
     else
         echo "❌ 后端服务启动失败，查看日志: tail -f /var/log/music_gen.log"
