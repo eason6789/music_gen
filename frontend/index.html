@@ -356,7 +356,7 @@
         <div class="tabs">
             <button class="tab active" data-tab="description">📝 描述模式</button>
             <button class="tab" data-tab="lyrics">🎤 歌词模式</button>
-            <!-- <button class="tab" data-tab="cover">🎙️ AI翻唱</button> -->
+            <button class="tab" data-tab="cover">🎙️ AI翻唱</button>
         </div>
 
         <div class="content">
@@ -395,8 +395,7 @@
                 </div>
             </div>
 
-            <!-- AI翻唱模式 (MiniMax API暂不支持, 暂时隐藏) -->
-            <!--
+            <!-- AI翻唱模式 -->
             <div id="cover-tab" class="tab-content">
                 <div class="form-group">
                     <label>上传原曲音频 <span style="color: #e74c3c; font-weight: normal;">*必填</span></label>
@@ -418,7 +417,6 @@
                     <textarea id="cover-lyrics" placeholder="如果想修改歌词，可以在这里输入新歌词（10-1000字符）&#10;不填则自动从原曲提取"></textarea>
                 </div>
             </div>
-            -->
 
             <button id="submit-btn" class="submit-btn">🚀 开始生成</button>
 
@@ -461,6 +459,12 @@
                 } else if (currentTab === 'lyrics') {
                     document.getElementById('song-name').value = '';
                     document.getElementById('lyrics').value = '';
+                } else if (currentTab === 'cover') {
+                    document.getElementById('cover-style').value = '';
+                    document.getElementById('cover-lyrics').value = '';
+                    document.getElementById('cover-file-name').textContent = '';
+                    document.getElementById('audio-file-cover').value = '';
+                    coverAudioData = null;
                 }
 
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -601,8 +605,47 @@
                     loading.classList.remove('show');
                 }
 
-            // AI翻唱暂时隐藏，MiniMax API的cover模型需要未公开的内部参数
-            // } else if (activeTab === 'cover') { ... }
+            } else if (activeTab === 'cover') {
+                const coverStyle = document.getElementById('cover-style').value.trim();
+                const coverLyrics = document.getElementById('cover-lyrics').value.trim();
+
+                if (!coverAudioData) {
+                    showError('请上传原曲音频');
+                    return;
+                }
+                if (!coverStyle) {
+                    showError('请输入目标翻唱风格描述');
+                    return;
+                }
+
+                submitBtn.disabled = true;
+                loading.classList.add('show');
+
+                try {
+                    const response = await fetch(`${API_BASE}/generate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            mode: 'cover',
+                            audio_base64: coverAudioData,
+                            prompt: coverStyle,
+                            lyrics: coverLyrics || null
+                        })
+                    });
+
+                    if (!response.ok && response.status >= 500) {
+                        showError(`服务器错误 (${response.status})，请稍后重试`);
+                    } else {
+                        const data = await parseJSON(response);
+                        handleResponse(data);
+                    }
+                } catch (e) {
+                    showError('请求失败: ' + e.message);
+                } finally {
+                    submitBtn.disabled = false;
+                    loading.classList.remove('show');
+                }
+            }
         });
 
         function handleResponse(data) {
