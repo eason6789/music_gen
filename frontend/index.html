@@ -124,6 +124,54 @@
             border-color: #667eea;
         }
 
+        .form-group input[type="url"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #eee;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input[type="url"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .file-upload {
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-upload:hover {
+            border-color: #667eea;
+            background: #f8f9fa;
+        }
+
+        .file-upload input {
+            display: none;
+        }
+
+        .file-upload .icon {
+            font-size: 40px;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .file-upload .text {
+            color: #666;
+        }
+
+        .file-upload .file-name {
+            color: #333;
+            font-weight: 500;
+            margin-top: 10px;
+        }
+
         .radio-group {
             display: flex;
             gap: 20px;
@@ -269,6 +317,33 @@
             font-size: 12px;
             border-top: 1px solid #eee;
         }
+
+        .preset-voice {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .preset-btn {
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .preset-btn.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
     </style>
 </head>
 <body>
@@ -281,6 +356,7 @@
         <div class="tabs">
             <button class="tab active" data-tab="description">📝 描述模式</button>
             <button class="tab" data-tab="lyrics">🎤 歌词模式</button>
+            <button class="tab" data-tab="cover">🎙️ AI翻唱</button>
         </div>
 
         <div class="content">
@@ -316,6 +392,29 @@
                 <div class="form-group">
                     <label for="lyrics">歌词 <span style="color: #e74c3c; font-weight: normal;">*必填</span></label>
                     <textarea id="lyrics" placeholder="输入歌词内容，使用换行分隔每行&#10;支持标签：[Verse]、[Chorus]、[Bridge] 等&#10;例如：&#10;[Verse]&#10;阳光穿过窗帘照进房间&#10;新的一天开始了&#10;[Chorus]&#10;快乐的心情无法言喻"></textarea>
+                </div>
+            </div>
+
+            <!-- AI翻唱模式 -->
+            <div id="cover-tab" class="tab-content">
+                <div class="form-group">
+                    <label>上传原曲音频 <span style="color: #e74c3c; font-weight: normal;">*必填</span></label>
+                    <div class="file-upload" id="audio-upload-cover">
+                        <input type="file" id="audio-file-cover" accept="audio/*">
+                        <div class="icon">🎵</div>
+                        <div class="text">点击或拖拽上传音频文件 (MP3/WAV/FLAC)</div>
+                        <div class="file-name" id="cover-file-name"></div>
+                    </div>
+                    <p class="info-text">支持6秒至6分钟的音频，时长最大50MB</p>
+                </div>
+                <div class="form-group">
+                    <label for="cover-style">目标翻唱风格描述 <span style="color: #e74c3c; font-weight: normal;">*必填</span></label>
+                    <textarea id="cover-style" placeholder="描述你想要的目标翻唱风格，如：温柔的女声，R&B风格，适合夜晚聆听"></textarea>
+                    <p class="info-text">描述目标音色和风格，长度10-300字符</p>
+                </div>
+                <div class="form-group">
+                    <label for="cover-lyrics">自定义歌词 <span style="color: #999; font-weight: normal;">(可选)</span></label>
+                    <textarea id="cover-lyrics" placeholder="如果想修改歌词，可以在这里输入新歌词（10-1000字符）&#10;不填则自动从原曲提取"></textarea>
                 </div>
             </div>
 
@@ -373,6 +472,26 @@
             });
         });
 
+        // 翻唱模式文件上传
+        const audioUploadCover = document.getElementById('audio-upload-cover');
+        const audioFileCover = document.getElementById('audio-file-cover');
+        const coverFileName = document.getElementById('cover-file-name');
+        let coverAudioData = null;
+
+        audioUploadCover.addEventListener('click', () => audioFileCover.click());
+        audioFileCover.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                coverFileName.textContent = file.name;
+                // 转换为base64
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    coverAudioData = e.target.result.split(',')[1]; // 去掉data:image/...前缀
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
         // 提交按钮
         const submitBtn = document.getElementById('submit-btn');
         const loading = document.getElementById('loading');
@@ -382,7 +501,6 @@
         const downloadBtn = document.getElementById('download-btn');
 
         submitBtn.addEventListener('click', async () => {
-            // 重置状态
             errorEl.classList.remove('show');
             resultEl.classList.remove('show');
 
@@ -403,9 +521,7 @@
                 try {
                     const response = await fetch('/music/api/generate', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             mode: 'description',
                             description: description,
@@ -414,16 +530,7 @@
                     });
 
                     const data = await response.json();
-
-                    if (data.error) {
-                        showError(data.error);
-                    } else if (data.success && data.audio_url) {
-                        showResult(data.audio_url);
-                    } else if (data.status === 'processing') {
-                        showError('音乐正在生成中，请稍后刷新重试');
-                    } else {
-                        showError('生成失败，请重试');
-                    }
+                    handleResponse(data);
                 } catch (e) {
                     showError('请求失败: ' + e.message);
                 } finally {
@@ -446,9 +553,7 @@
                 try {
                     const response = await fetch('/music/api/generate', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             mode: 'lyrics',
                             song_name: songName,
@@ -457,16 +562,44 @@
                     });
 
                     const data = await response.json();
+                    handleResponse(data);
+                } catch (e) {
+                    showError('请求失败: ' + e.message);
+                } finally {
+                    submitBtn.disabled = false;
+                    loading.classList.remove('show');
+                }
 
-                    if (data.error) {
-                        showError(data.error);
-                    } else if (data.success && data.audio_url) {
-                        showResult(data.audio_url);
-                    } else if (data.status === 'processing') {
-                        showError('音乐正在生成中，请稍后刷新重试');
-                    } else {
-                        showError('生成失败，请重试');
-                    }
+            } else if (activeTab === 'cover') {
+                const coverStyle = document.getElementById('cover-style').value.trim();
+                const coverLyrics = document.getElementById('cover-lyrics').value.trim();
+
+                if (!coverAudioData) {
+                    showError('请上传原曲音频');
+                    return;
+                }
+                if (!coverStyle) {
+                    showError('请输入目标翻唱风格描述');
+                    return;
+                }
+
+                submitBtn.disabled = true;
+                loading.classList.add('show');
+
+                try {
+                    const response = await fetch('/music/api/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            mode: 'cover',
+                            audio_base64: coverAudioData,
+                            prompt: coverStyle,
+                            lyrics: coverLyrics || null
+                        })
+                    });
+
+                    const data = await response.json();
+                    handleResponse(data);
                 } catch (e) {
                     showError('请求失败: ' + e.message);
                 } finally {
@@ -475,6 +608,18 @@
                 }
             }
         });
+
+        function handleResponse(data) {
+            if (data.error) {
+                showError(data.error);
+            } else if (data.success && data.audio_url) {
+                showResult(data.audio_url);
+            } else if (data.status === 'processing') {
+                showError('音乐正在生成中，请稍后刷新重试');
+            } else {
+                showError('生成失败，请重试');
+            }
+        }
 
         function showError(message) {
             errorEl.textContent = message;

@@ -1,9 +1,9 @@
 import os
 import uuid
 import requests
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-import tempfile
+import base64
 from config import Config
 
 app = Flask(__name__)
@@ -14,7 +14,7 @@ MINIMAX_API_KEY = Config.MINIMAX_API_KEY
 MINIMAX_API_URL = 'https://api.minimaxi.com/v1/music_generation'
 
 
-@app.route('/health', methods=['GET'])
+@app.route('/api/health', methods=['GET'])
 def health():
     """健康检查"""
     return jsonify({'status': 'ok', 'service': 'music-gen-api'})
@@ -25,11 +25,13 @@ def generate_music():
     """
     生成音乐
     请求体:
-    - mode: "description" | "lyrics"
+    - mode: "description" | "lyrics" | "cover"
     - description: string (mode=description时)
     - prompt_length: "500" | "1000" (mode=description时)
     - song_name: string (mode=lyrics时, 可选)
     - lyrics: string (mode=lyrics时, 必填)
+    - audio_base64: string (mode=cover时, 必填)
+    - prompt: string (mode=cover时, 必填)
     """
     try:
         data = request.get_json()
@@ -49,7 +51,7 @@ def generate_music():
                 description = description[:max_len]
 
             payload = {
-                'model': 'music-2.6-free',
+                'model': 'music-2.6',
                 'prompt': description,
                 'is_instrumental': True,
                 'output_format': 'url',
@@ -70,7 +72,7 @@ def generate_music():
 
             prompt = song_name if song_name else ''
             payload = {
-                'model': 'music-2.6-free',
+                'model': 'music-2.6',
                 'prompt': prompt,
                 'lyrics': lyrics,
                 'is_instrumental': False,
@@ -81,8 +83,38 @@ def generate_music():
                     'format': 'mp3'
                 }
             }
+
+        elif mode == 'cover':
+            # 模式3: AI翻唱
+            audio_base64 = data.get('audio_base64', '')
+            prompt = data.get('prompt', '')
+            lyrics = data.get('lyrics')
+
+            if not audio_base64:
+                return jsonify({'error': '请上传原曲音频'}), 400
+
+            if not prompt:
+                return jsonify({'error': '请输入目标翻唱风格描述'}), 400
+
+            # 构建翻唱请求
+            payload = {
+                'model': 'music-cover',
+                'prompt': prompt,
+                'audio_base64': audio_base64,
+                'output_format': 'url',
+                'audio_setting': {
+                    'sample_rate': 44100,
+                    'bitrate': 256000,
+                    'format': 'mp3'
+                }
+            }
+
+            # 如果提供了歌词，添加到请求中
+            if lyrics:
+                payload['lyrics'] = lyrics
+
         else:
-            return jsonify({'error': '无效的mode，请使用 description 或 lyrics'}), 400
+            return jsonify({'error': '无效的mode，请使用 description、lyrics 或 cover'}), 400
 
         # 调用MiniMax API
         headers = {
@@ -94,10 +126,15 @@ def generate_music():
             MINIMAX_API_URL,
             headers=headers,
             json=payload,
-            timeout=120
+            timeout=180  # 音乐生成可能需要较长时间
         )
 
         result = response.json()
+
+        if 'base_resp' in result and result['base_resp'].get('status_code') != 0:
+            return jsonify({
+                'error': f'MiniMax API错误: {result["base_resp"].get("status_msg", "未知错误")}'
+            }), 400
 
         if response.status_code != 200:
             return jsonify({
@@ -117,7 +154,7 @@ def generate_music():
                 'extra_info': result.get('extra_info', {})
             })
         elif status == 1:
-            # 生成中，需要轮询
+            # 生成中
             trace_id = result.get('trace_id')
             return jsonify({
                 'success': True,
@@ -130,27 +167,6 @@ def generate_music():
 
     except requests.Timeout:
         return jsonify({'error': '请求超时，请稍后重试'}), 504
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/query/<trace_id>', methods=['GET'])
-def query_music(trace_id):
-    """查询音乐生成状态"""
-    try:
-        headers = {
-            'Authorization': f'Bearer {MINIMAX_API_KEY}',
-            'Content-Type': 'application/json'
-        }
-
-        # MiniMax的查询接口需要调用status接口
-        # 这里简化处理，实际应该轮询
-        return jsonify({
-            'success': True,
-            'trace_id': trace_id,
-            'message': '请稍后刷新页面查看结果'
-        })
-
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
