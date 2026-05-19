@@ -61,7 +61,8 @@ def generate_music():
             payload = {
                 'model': 'music-2.6',
                 'prompt': description,
-                'is_instrumental': True,
+                'is_instrumental': False,
+                'lyrics': '♪\n',
                 'output_format': 'url',
                 'audio_setting': {
                     'sample_rate': 44100,
