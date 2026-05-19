@@ -394,6 +394,33 @@
             margin-top: 8px;
         }
 
+        /* Lyrics display */
+        .lyrics-display {
+            margin-top: 18px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .lyrics-display .lyrics-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+        }
+
+        .lyrics-display .lyrics-text {
+            font-size: 13px;
+            line-height: 1.8;
+            color: var(--text);
+            white-space: pre-wrap;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+        }
+
         /* Footer */
         .footer {
             text-align: center;
@@ -476,11 +503,15 @@
                 <div id="error" class="error"></div>
 
                 <div id="result" class="result">
-                    <h3 class="result-title">生成完成</h3>
+                    <h3 class="result-title" id="result-title">生成完成</h3>
                     <audio id="audio-player" class="audio-player" controls></audio>
                     <div>
                         <a id="download-btn" class="download-btn" href="#" download="music.mp3">下载音乐</a>
                         <p class="download-hint">如无法下载，请右键链接 &mdash; 另存为</p>
+                    </div>
+                    <div id="lyrics-display" class="lyrics-display" style="display:none;">
+                        <div class="lyrics-label">歌词</div>
+                        <div class="lyrics-text" id="lyrics-text"></div>
                     </div>
                 </div>
             </div>
@@ -673,7 +704,7 @@
             if (data.error) {
                 showError(data.error);
             } else if (data.success && data.audio_url) {
-                showResult(data.audio_url);
+                showResult(data.audio_url, data.song_title, data.lyrics);
             } else if (data.status === 'processing') {
                 showError('音乐正在生成中，请稍后刷新重试');
             } else {
@@ -695,10 +726,31 @@
             errorEl.classList.add('show');
         }
 
-        function showResult(audioUrl) {
+        function showResult(audioUrl, songTitle, lyrics) {
             audioPlayer.src = audioUrl;
             downloadBtn.href = audioUrl;
-            downloadBtn.download = 'ai_music_' + Date.now() + '.mp3';
+
+            // 使用歌名作为下载文件名
+            let filename = 'music.mp3';
+            if (songTitle) {
+                filename = songTitle.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '_').substring(0, 50) + '.mp3';
+            }
+            downloadBtn.download = filename;
+
+            // 显示歌名
+            const resultTitle = document.getElementById('result-title');
+            resultTitle.textContent = songTitle || '生成完成';
+
+            // 显示歌词
+            const lyricsDisplay = document.getElementById('lyrics-display');
+            const lyricsText = document.getElementById('lyrics-text');
+            if (lyrics) {
+                lyricsText.textContent = lyrics;
+                lyricsDisplay.style.display = 'block';
+            } else {
+                lyricsDisplay.style.display = 'none';
+            }
+
             resultEl.classList.add('show');
         }
     </script>

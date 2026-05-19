@@ -48,8 +48,8 @@ sshpass -p '*7;Vf3@BkrzD,g+u' ssh -o StrictHostKeyChecking=no -p $REMOTE_PORT $R
         sleep 1
     fi
 
-    # 启动后端服务 (后台运行)
-    nohup python3 app.py > /var/log/music_gen.log 2>&1 &
+    # 启动后端服务 (gunicorn, 4 workers)
+    nohup gunicorn -w 4 -b 0.0.0.0:5000 --timeout 300 app:app > /var/log/music_gen.log 2>&1 &
     echo "后端服务已启动，PID: $!"
 
     # 等待服务启动
