@@ -1,0 +1,24 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]: ♫
+    - heading "AI 音乐生成器" [level=1] [ref=e5]
+    - paragraph [ref=e6]: 基于 MiniMax Music 2.6 · 让创意化为旋律
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - button "描述模式" [ref=e9] [cursor=pointer]
+      - button "歌词模式" [ref=e10] [cursor=pointer]
+      - button "AI 翻唱" [ref=e11] [cursor=pointer]
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - generic [ref=e15]: 音乐描述
+          - textbox "音乐描述" [ref=e16]:
+            - /placeholder: "描述你想要的音乐风格、情绪、场景...\n例如：轻松愉快的民谣，适合阳光明媚的下午，吉他伴奏，给人温暖的感觉\n也可以描述带有故事情节的歌曲，AI 会为你配上合适的歌词"
+            - text: 一首关于夏天的歌曲，轻快的旋律，讲述和朋友们在海边的快乐时光
+          - generic [ref=e17]: 30/500
+        - paragraph [ref=e18]: 描述你想要的音乐感觉，可以是纯音乐也可以是有歌词的歌曲
+      - button "开始生成" [disabled] [ref=e19]
+      - generic [ref=e21]:
+        - paragraph [ref=e23]: 音乐生成中，请稍候...
+        - paragraph [ref=e24]: 预计需要 25-60 秒，复杂请求可能更久
+  - generic [ref=e20]: Powered by MiniMax Music 2.6 · 生成的音乐仅供个人学习使用

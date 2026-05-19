@@ -26,7 +26,8 @@ def upload_bytes(data, key=None, prefix='music', content_type='audio/mpeg'):
         Bucket=Config.COS_BUCKET,
         Key=key,
         Body=data,
-        ContentType=content_type
+        ContentType=content_type,
+        ACL='public-read'
     )
     url = f'{Config.COS_BASE_URL}/{key}'
     return url, key
@@ -39,7 +40,8 @@ def upload_file(local_path, key=None, prefix='music'):
     _client.upload_file(
         Bucket=Config.COS_BUCKET,
         Key=key,
-        LocalFilePath=local_path
+        LocalFilePath=local_path,
+        ACL='public-read'
     )
     url = f'{Config.COS_BASE_URL}/{key}'
     return url, key
@@ -54,7 +56,8 @@ def download_to_cos(source_url, prefix='music', ext='mp3'):
         Bucket=Config.COS_BUCKET,
         Key=key,
         Body=resp.content,
-        ContentType='audio/mpeg'
+        ContentType='audio/mpeg',
+        ACL='public-read'
     )
     return f'{Config.COS_BASE_URL}/{key}', key
 
