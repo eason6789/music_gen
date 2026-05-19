@@ -49,25 +49,20 @@ def generate_music():
         }
 
         if mode == 'description':
-            # 模式1: 纯描述生成
-            # 注意: is_instrumental=True 在 MiniMax API 上有 bug，会导致请求挂起无响应
-            # 解决方案: 使用 is_instrumental=False + 最小歌词标记 [Instrumental]
+            # 描述模式: 根据用户描述生成音乐，模型自行判断是否需要歌词
             description = data.get('description', '')
-            prompt_length = data.get('prompt_length', '500')
 
             if not description:
                 return jsonify({'error': '请输入描述'}), 400
 
-            # 限制描述长度
-            max_len = int(prompt_length)
-            if len(description) > max_len:
-                description = description[:max_len]
+            if len(description) > 500:
+                description = description[:500]
 
             payload = {
                 'model': 'music-2.6',
                 'prompt': description,
                 'is_instrumental': False,
-                'lyrics': '[Instrumental]\n',
+                'lyrics': '',
                 'output_format': 'url',
                 'audio_setting': {
                     'sample_rate': 44100,

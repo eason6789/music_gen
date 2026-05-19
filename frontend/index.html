@@ -3,8 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI音乐生成器</title>
+    <title>AI 音乐生成器</title>
     <style>
+        :root {
+            --bg-deep: #0d1117;
+            --bg-card: rgba(22, 27, 34, 0.85);
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #e6edf3;
+            --text-muted: #8b949e;
+            --accent: #f78166;
+            --accent-hover: #e86a4f;
+            --accent-subtle: rgba(247, 129, 102, 0.12);
+            --input-bg: rgba(255, 255, 255, 0.04);
+            --input-focus: rgba(247, 129, 102, 0.3);
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -12,144 +27,216 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-deep);
+            color: var(--text);
             min-height: 100vh;
-            padding: 20px;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
         }
 
-        .container {
-            max-width: 800px;
+        /* Subtle background pattern */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at 20% 50%, rgba(247, 129, 102, 0.04) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(167, 139, 250, 0.03) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(247, 129, 102, 0.02) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app {
+            position: relative;
+            z-index: 1;
+            max-width: 760px;
             margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-            overflow: hidden;
+            padding: 40px 20px 60px;
         }
 
+        /* Header */
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
             text-align: center;
+            padding: 48px 0 40px;
+        }
+
+        .header-icon {
+            width: 56px;
+            height: 56px;
+            background: var(--accent-subtle);
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-bottom: 20px;
         }
 
         .header h1 {
-            font-size: 28px;
-            margin-bottom: 10px;
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            margin-bottom: 6px;
         }
 
         .header p {
-            opacity: 0.9;
+            color: var(--text-muted);
             font-size: 14px;
         }
 
+        /* Card */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            overflow: hidden;
+        }
+
+        /* Tabs */
         .tabs {
             display: flex;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.02);
         }
 
         .tab {
             flex: 1;
-            padding: 15px;
+            padding: 14px 16px;
             text-align: center;
             cursor: pointer;
             border: none;
-            background: white;
-            font-size: 16px;
-            color: #666;
-            transition: all 0.3s;
+            background: none;
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 500;
+            transition: all 0.2s;
+            position: relative;
+            white-space: nowrap;
+        }
+
+        .tab::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 2px;
+            background: var(--accent);
+            border-radius: 1px;
+            transition: width 0.25s ease;
         }
 
         .tab.active {
-            color: #667eea;
-            border-bottom: 3px solid #667eea;
-            font-weight: 600;
+            color: var(--text);
         }
 
-        .tab:hover {
-            background: #f8f9fa;
+        .tab.active::after {
+            width: 32px;
         }
 
+        .tab:hover:not(.active) {
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Content area */
         .content {
-            padding: 30px;
+            padding: 28px;
         }
 
         .tab-content {
             display: none;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .tab-content.active {
             display: block;
         }
 
+        /* Form */
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 22px;
         }
 
         .form-group label {
             display: block;
             margin-bottom: 8px;
-            color: #333;
-            font-weight: 500;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+        }
+
+        .form-group textarea,
+        .form-group input[type="text"],
+        .form-group input[type="url"] {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            color: var(--text);
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+
+        .form-group textarea:focus,
+        .form-group input[type="text"]:focus,
+        .form-group input[type="url"]:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--input-focus);
         }
 
         .form-group textarea {
-            width: 100%;
-            min-height: 150px;
-            padding: 15px;
-            border: 2px solid #eee;
-            border-radius: 10px;
-            font-size: 16px;
-            resize: vertical;
-            transition: border-color 0.3s;
+            min-height: 130px;
         }
 
-        .form-group textarea:focus {
-            outline: none;
-            border-color: #667eea;
+        .form-group textarea::placeholder,
+        .form-group input::placeholder {
+            color: var(--text-muted);
+            opacity: 0.6;
         }
 
-        .form-group input[type="text"] {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #eee;
-            border-radius: 10px;
-            font-size: 16px;
-            transition: border-color 0.3s;
+        /* Helper text */
+        .helper-text {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 6px;
         }
 
-        .form-group input[type="text"]:focus {
-            outline: none;
-            border-color: #667eea;
+        .char-count {
+            text-align: right;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
         }
 
-        .form-group input[type="url"] {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #eee;
-            border-radius: 10px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-
-        .form-group input[type="url"]:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
+        /* File upload */
         .file-upload {
-            border: 2px dashed #ddd;
-            border-radius: 10px;
-            padding: 20px;
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-sm);
+            padding: 28px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
+            background: var(--input-bg);
         }
 
         .file-upload:hover {
-            border-color: #667eea;
-            background: #f8f9fa;
+            border-color: var(--accent);
+            background: var(--accent-subtle);
         }
 
         .file-upload input {
@@ -157,302 +244,265 @@
         }
 
         .file-upload .icon {
-            font-size: 40px;
-            color: #667eea;
+            font-size: 36px;
             margin-bottom: 10px;
         }
 
         .file-upload .text {
-            color: #666;
+            color: var(--text-muted);
+            font-size: 14px;
         }
 
         .file-upload .file-name {
-            color: #333;
+            color: var(--accent);
             font-weight: 500;
             margin-top: 10px;
+            font-size: 14px;
         }
 
-        .radio-group {
-            display: flex;
-            gap: 20px;
-            margin-top: 10px;
-        }
-
-        .radio-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-        }
-
-        .radio-item input {
-            width: 18px;
-            height: 18px;
-            accent-color: #667eea;
-        }
-
+        /* Submit button */
         .submit-btn {
             width: 100%;
-            padding: 15px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            padding: 14px;
+            background: var(--accent);
+            color: #fff;
             border: none;
-            border-radius: 10px;
-            font-size: 18px;
+            border-radius: var(--radius-sm);
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: all 0.2s;
+            letter-spacing: 0.02em;
         }
 
         .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+            background: var(--accent-hover);
+            box-shadow: 0 4px 16px rgba(247, 129, 102, 0.25);
         }
 
         .submit-btn:disabled {
-            background: #ccc;
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-muted);
             cursor: not-allowed;
-            transform: none;
             box-shadow: none;
         }
 
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 36px 0;
+        }
+
+        .loading.show {
+            display: block;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.08);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .loading-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            opacity: 0.6;
+            margin-top: 6px;
+        }
+
+        /* Error */
+        .error {
+            color: #f85149;
+            padding: 12px 16px;
+            background: rgba(248, 81, 73, 0.1);
+            border: 1px solid rgba(248, 81, 73, 0.2);
+            border-radius: var(--radius-sm);
+            margin-top: 18px;
+            display: none;
+            font-size: 14px;
+        }
+
+        .error.show {
+            display: block;
+            animation: fadeIn 0.2s ease;
+        }
+
+        /* Result */
         .result {
-            margin-top: 30px;
+            margin-top: 24px;
             padding: 20px;
-            background: #f8f9fa;
-            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
             display: none;
         }
 
         .result.show {
             display: block;
+            animation: fadeIn 0.3s ease;
         }
 
         .result-title {
-            font-size: 18px;
-            color: #333;
-            margin-bottom: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 14px;
         }
 
         .audio-player {
             width: 100%;
-            margin-bottom: 15px;
+            margin-bottom: 14px;
+            border-radius: var(--radius-sm);
         }
 
         .download-btn {
             display: inline-block;
             padding: 10px 20px;
-            background: #667eea;
-            color: white;
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text);
             text-decoration: none;
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             font-weight: 500;
-            transition: background 0.3s;
+            font-size: 14px;
+            transition: all 0.2s;
+            border: 1px solid var(--border);
         }
 
         .download-btn:hover {
-            background: #5a6fd6;
+            background: rgba(255, 255, 255, 0.14);
+            border-color: rgba(255, 255, 255, 0.2);
         }
 
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 30px;
+        .download-hint {
+            font-size: 11px;
+            color: var(--text-muted);
+            opacity: 0.6;
+            margin-top: 8px;
         }
 
-        .loading.show {
-            display: block;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .loading-text {
-            color: #666;
-            font-size: 16px;
-        }
-
-        .error {
-            color: #e74c3c;
-            padding: 15px;
-            background: #fde8e8;
-            border-radius: 8px;
-            margin-top: 20px;
-            display: none;
-        }
-
-        .error.show {
-            display: block;
-        }
-
-        .char-count {
-            text-align: right;
-            color: #999;
-            font-size: 14px;
-            margin-top: 5px;
-        }
-
-        .info-text {
-            font-size: 12px;
-            color: #999;
-            margin-top: 5px;
-        }
-
+        /* Footer */
         .footer {
             text-align: center;
-            padding: 20px;
-            color: #999;
+            padding: 28px 20px;
+            color: var(--text-muted);
             font-size: 12px;
-            border-top: 1px solid #eee;
-        }
-
-        .preset-voice {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .preset-btn {
-            padding: 8px 16px;
-            background: #f0f0f0;
-            border: 1px solid #ddd;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-
-        .preset-btn:hover {
-            background: #e0e0e0;
-        }
-
-        .preset-btn.selected {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
+            opacity: 0.5;
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="app">
         <div class="header">
-            <h1>🎵 AI音乐生成器</h1>
-            <p>基于 MiniMax Music 2.6 · 让创意化为旋律</p>
+            <div class="header-icon">&#9835;</div>
+            <h1>AI 音乐生成器</h1>
+            <p>基于 MiniMax Music 2.6 &middot; 让创意化为旋律</p>
         </div>
 
-        <div class="tabs">
-            <button class="tab active" data-tab="description">📝 描述模式</button>
-            <button class="tab" data-tab="lyrics">🎤 歌词模式</button>
-            <button class="tab" data-tab="cover">🎙️ AI翻唱</button>
-        </div>
+        <div class="card">
+            <div class="tabs">
+                <button class="tab active" data-tab="description">描述模式</button>
+                <button class="tab" data-tab="lyrics">歌词模式</button>
+                <button class="tab" data-tab="cover">AI 翻唱</button>
+            </div>
 
-        <div class="content">
-            <!-- 描述模式 -->
-            <div id="description-tab" class="tab-content active">
-                <div class="form-group">
-                    <label for="description">音乐描述</label>
-                    <textarea id="description" placeholder="描述你想要的音乐风格、情绪、场景...&#10;例如：轻松愉快的民谣，适合阳光明媚的下午，吉他伴奏，给人温暖的感觉"></textarea>
-                    <div class="char-count"><span id="desc-count">0</span>/<span id="desc-limit">500</span></div>
-                </div>
-                <div class="form-group">
-                    <label>描述长度限制</label>
-                    <div class="radio-group">
-                        <label class="radio-item">
-                            <input type="radio" name="desc-length" value="500" checked>
-                            <span>500字</span>
-                        </label>
-                        <label class="radio-item">
-                            <input type="radio" name="desc-length" value="1000">
-                            <span>1000字</span>
-                        </label>
+            <div class="content">
+                <!-- 描述模式 -->
+                <div id="description-tab" class="tab-content active">
+                    <div class="form-group">
+                        <label for="description">音乐描述</label>
+                        <textarea id="description" placeholder="描述你想要的音乐风格、情绪、场景...&#10;例如：轻松愉快的民谣，适合阳光明媚的下午，吉他伴奏，给人温暖的感觉&#10;也可以描述带有故事情节的歌曲，AI 会为你配上合适的歌词"></textarea>
+                        <div class="char-count"><span id="desc-count">0</span>/500</div>
                     </div>
-                    <p class="info-text">纯音乐生成，无需歌词</p>
+                    <p class="helper-text">描述你想要的音乐感觉，可以是纯音乐也可以是有歌词的歌曲</p>
                 </div>
-            </div>
 
-            <!-- 歌词模式 -->
-            <div id="lyrics-tab" class="tab-content">
-                <div class="form-group">
-                    <label for="song-name">歌曲名称 <span style="color: #999; font-weight: normal;">(可选)</span></label>
-                    <input type="text" id="song-name" placeholder="给歌曲起个名字">
-                </div>
-                <div class="form-group">
-                    <label for="lyrics">歌词 <span style="color: #e74c3c; font-weight: normal;">*必填</span></label>
-                    <textarea id="lyrics" placeholder="输入歌词内容，使用换行分隔每行&#10;支持标签：[Verse]、[Chorus]、[Bridge] 等&#10;例如：&#10;[Verse]&#10;阳光穿过窗帘照进房间&#10;新的一天开始了&#10;[Chorus]&#10;快乐的心情无法言喻"></textarea>
-                </div>
-            </div>
-
-            <!-- AI翻唱模式 -->
-            <div id="cover-tab" class="tab-content">
-                <div class="form-group">
-                    <label>上传原曲音频 <span style="color: #e74c3c; font-weight: normal;">*必填</span></label>
-                    <div class="file-upload" id="audio-upload-cover">
-                        <input type="file" id="audio-file-cover" accept="audio/*">
-                        <div class="icon">🎵</div>
-                        <div class="text">点击或拖拽上传音频文件 (MP3/WAV/FLAC)</div>
-                        <div class="file-name" id="cover-file-name"></div>
+                <!-- 歌词模式 -->
+                <div id="lyrics-tab" class="tab-content">
+                    <div class="form-group">
+                        <label for="song-name">歌曲名称 <span style="color: var(--text-muted); font-weight: normal;">(可选)</span></label>
+                        <input type="text" id="song-name" placeholder="给歌曲起个名字">
                     </div>
-                    <p class="info-text">支持6秒至6分钟的音频，时长最大50MB</p>
+                    <div class="form-group">
+                        <label for="lyrics">歌词 <span style="color: #f85149; font-weight: normal;">*必填</span></label>
+                        <textarea id="lyrics" placeholder="输入歌词内容，使用换行分隔每行&#10;支持标签：[Verse]、[Chorus]、[Bridge] 等&#10;例如：&#10;[Verse]&#10;阳光穿过窗帘照进房间&#10;新的一天开始了&#10;[Chorus]&#10;快乐的心情无法言喻"></textarea>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="cover-style">目标翻唱风格描述 <span style="color: #e74c3c; font-weight: normal;">*必填</span></label>
-                    <textarea id="cover-style" placeholder="描述你想要的目标翻唱风格，如：温柔的女声，R&B风格，适合夜晚聆听"></textarea>
-                    <p class="info-text">描述目标音色和风格，长度10-300字符</p>
+
+                <!-- AI翻唱模式 -->
+                <div id="cover-tab" class="tab-content">
+                    <div class="form-group">
+                        <label>上传原曲音频 <span style="color: #f85149; font-weight: normal;">*必填</span></label>
+                        <div class="file-upload" id="audio-upload-cover">
+                            <input type="file" id="audio-file-cover" accept="audio/*">
+                            <div class="icon">&#9835;</div>
+                            <div class="text">点击上传音频文件 (MP3/WAV/FLAC)</div>
+                            <div class="file-name" id="cover-file-name"></div>
+                        </div>
+                        <p class="helper-text">支持 6 秒至 6 分钟的音频，最大 50MB</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="cover-style">目标翻唱风格描述 <span style="color: #f85149; font-weight: normal;">*必填</span></label>
+                        <textarea id="cover-style" placeholder="描述你想要的目标翻唱风格，如：温柔的女声，R&B风格，适合夜晚聆听"></textarea>
+                        <p class="helper-text">描述目标音色和风格，长度 10-300 字符</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="cover-lyrics">自定义歌词 <span style="color: var(--text-muted); font-weight: normal;">(可选)</span></label>
+                        <textarea id="cover-lyrics" placeholder="如果想修改歌词，可以在这里输入新歌词（10-1000字符）&#10;不填则自动从原曲提取"></textarea>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="cover-lyrics">自定义歌词 <span style="color: #999; font-weight: normal;">(可选)</span></label>
-                    <textarea id="cover-lyrics" placeholder="如果想修改歌词，可以在这里输入新歌词（10-1000字符）&#10;不填则自动从原曲提取"></textarea>
+
+                <button id="submit-btn" class="submit-btn">开始生成</button>
+
+                <div id="loading" class="loading">
+                    <div class="spinner"></div>
+                    <p class="loading-text">音乐生成中，请稍候...</p>
+                    <p class="loading-sub">预计需要 25-60 秒，复杂请求可能更久</p>
                 </div>
-            </div>
 
-            <button id="submit-btn" class="submit-btn">🚀 开始生成</button>
+                <div id="error" class="error"></div>
 
-            <div id="loading" class="loading">
-                <div class="spinner"></div>
-                <p class="loading-text">音乐生成中，请稍候...</p>
-            </div>
-
-            <div id="error" class="error"></div>
-
-            <div id="result" class="result">
-                <h3 class="result-title">🎉 生成完成!</h3>
-                <audio id="audio-player" class="audio-player" controls></audio>
-                <div>
-                    <a id="download-btn" class="download-btn" href="#" download="music.mp3">⬇️ 下载音乐</a>
+                <div id="result" class="result">
+                    <h3 class="result-title">生成完成</h3>
+                    <audio id="audio-player" class="audio-player" controls></audio>
+                    <div>
+                        <a id="download-btn" class="download-btn" href="#" download="music.mp3">下载音乐</a>
+                        <p class="download-hint">如无法下载，请右键链接 &mdash; 另存为</p>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="footer">
-            Powered by MiniMax Music 2.6 · 生成的音乐仅供个人学习使用
+            Powered by MiniMax Music 2.6 &middot; 生成的音乐仅供个人学习使用
         </div>
     </div>
 
     <script>
-        // 自动检测API路径: 独立域名用 /api, 子目录部署用 /music/api
+        // API 路径自动检测
         const API_BASE = window.location.pathname.startsWith('/music_gen/') ? '/music/api' : '/api';
 
-        // Tab切换
+        // Tab 切换
         let currentTab = 'description';
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 const newTab = tab.dataset.tab;
                 if (currentTab === newTab) return;
 
-                // 清除其他tab的内容(同一tab保留)
+                // 清除其他 tab 的内容 (同一 tab 保留)
                 if (currentTab === 'description') {
                     document.getElementById('description').value = '';
                     document.getElementById('desc-count').textContent = '0';
@@ -473,7 +523,6 @@
                 document.getElementById(newTab + '-tab').classList.add('active');
                 currentTab = newTab;
 
-                // 清除结果显示
                 errorEl.classList.remove('show');
                 resultEl.classList.remove('show');
             });
@@ -482,44 +531,41 @@
         // 描述字数统计
         const descriptionInput = document.getElementById('description');
         const descCount = document.getElementById('desc-count');
-        const descLimit = document.getElementById('desc-limit');
+        const MAX_DESC_LEN = 500;
 
         descriptionInput.addEventListener('input', () => {
             descCount.textContent = descriptionInput.value.length;
         });
 
-        // 描述长度限制切换
-        document.querySelectorAll('input[name="desc-length"]').forEach(radio => {
-            radio.addEventListener('change', () => {
-                descLimit.textContent = radio.value;
-                if (descriptionInput.value.length > parseInt(radio.value)) {
-                    descriptionInput.value = descriptionInput.value.substring(0, parseInt(radio.value));
-                    descCount.textContent = descriptionInput.value.length;
-                }
-            });
-        });
-
-        // 翻唱模式文件上传
+        // 翻唱模式文件上传 (含大小限制)
         const audioUploadCover = document.getElementById('audio-upload-cover');
         const audioFileCover = document.getElementById('audio-file-cover');
         const coverFileName = document.getElementById('cover-file-name');
         let coverAudioData = null;
+        const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
         audioUploadCover.addEventListener('click', () => audioFileCover.click());
         audioFileCover.addEventListener('change', async (e) => {
             const file = e.target.files[0];
-            if (file) {
-                coverFileName.textContent = file.name;
-                // 转换为base64
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    coverAudioData = e.target.result.split(',')[1]; // 去掉data:image/...前缀
-                };
-                reader.readAsDataURL(file);
+            if (!file) return;
+
+            if (file.size > MAX_FILE_SIZE) {
+                showError('文件过大，最大支持 50MB');
+                audioFileCover.value = '';
+                coverFileName.textContent = '';
+                coverAudioData = null;
+                return;
             }
+
+            coverFileName.textContent = file.name;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                coverAudioData = e.target.result.split(',')[1];
+            };
+            reader.readAsDataURL(file);
         });
 
-        // 提交按钮
+        // 提交
         const submitBtn = document.getElementById('submit-btn');
         const loading = document.getElementById('loading');
         const errorEl = document.getElementById('error');
@@ -534,12 +580,11 @@
             const activeTab = document.querySelector('.tab.active').dataset.tab;
 
             if (activeTab === 'description') {
-                const description = document.getElementById('description').value.trim();
-                const promptLength = document.querySelector('input[name="desc-length"]:checked').value;
-
-                if (!description) {
-                    showError('请输入音乐描述');
-                    return;
+                const description = descriptionInput.value.trim();
+                if (!description) { showError('请输入音乐描述'); return; }
+                if (description.length > MAX_DESC_LEN) {
+                    descriptionInput.value = description.substring(0, MAX_DESC_LEN);
+                    descCount.textContent = MAX_DESC_LEN;
                 }
 
                 submitBtn.disabled = true;
@@ -549,13 +594,8 @@
                     const response = await fetch(`${API_BASE}/generate`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            mode: 'description',
-                            description: description,
-                            prompt_length: promptLength
-                        })
+                        body: JSON.stringify({ mode: 'description', description: description.substring(0, MAX_DESC_LEN) })
                     });
-
                     if (!response.ok && response.status >= 500) {
                         showError(`服务器错误 (${response.status})，请稍后重试`);
                     } else {
@@ -573,10 +613,7 @@
                 const songName = document.getElementById('song-name').value.trim();
                 const lyrics = document.getElementById('lyrics').value.trim();
 
-                if (!lyrics) {
-                    showError('请输入歌词');
-                    return;
-                }
+                if (!lyrics) { showError('请输入歌词'); return; }
 
                 submitBtn.disabled = true;
                 loading.classList.add('show');
@@ -585,13 +622,8 @@
                     const response = await fetch(`${API_BASE}/generate`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            mode: 'lyrics',
-                            song_name: songName,
-                            lyrics: lyrics
-                        })
+                        body: JSON.stringify({ mode: 'lyrics', song_name: songName, lyrics: lyrics })
                     });
-
                     if (!response.ok && response.status >= 500) {
                         showError(`服务器错误 (${response.status})，请稍后重试`);
                     } else {
@@ -609,14 +641,8 @@
                 const coverStyle = document.getElementById('cover-style').value.trim();
                 const coverLyrics = document.getElementById('cover-lyrics').value.trim();
 
-                if (!coverAudioData) {
-                    showError('请上传原曲音频');
-                    return;
-                }
-                if (!coverStyle) {
-                    showError('请输入目标翻唱风格描述');
-                    return;
-                }
+                if (!coverAudioData) { showError('请上传原曲音频'); return; }
+                if (!coverStyle) { showError('请输入目标翻唱风格描述'); return; }
 
                 submitBtn.disabled = true;
                 loading.classList.add('show');
@@ -632,7 +658,6 @@
                             lyrics: coverLyrics || null
                         })
                     });
-
                     if (!response.ok && response.status >= 500) {
                         showError(`服务器错误 (${response.status})，请稍后重试`);
                     } else {
