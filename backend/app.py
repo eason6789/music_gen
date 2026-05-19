@@ -223,7 +223,7 @@ def generate_music():
             MINIMAX_API_URL,
             headers=headers,
             json=payload,
-            timeout=90,
+            timeout=180,
             proxies={'http': None, 'https': None}
         )
 
