@@ -62,7 +62,7 @@ def generate_music():
                 'model': 'music-2.6',
                 'prompt': description,
                 'is_instrumental': False,
-                'lyrics': '',
+                'lyrics': description,
                 'output_format': 'url',
                 'audio_setting': {
                     'sample_rate': 44100,
