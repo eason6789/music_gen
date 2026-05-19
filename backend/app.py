@@ -22,13 +22,15 @@ MINIMAX_API_URL = 'https://api.minimaxi.com/v1/music_generation'
 MINIMAX_COVER_PREPROCESS_URL = 'https://api.minimaxi.com/v1/music_cover_preprocess'
 
 
+import sys
+
 def _save_to_cos(audio_url):
     """下载 MiniMax OSS 音频并上传到 COS, 返回 COS URL"""
     try:
         cos_url, _ = cos_client.download_to_cos(audio_url)
         return cos_url
     except Exception as e:
-        print(f'COS upload failed, falling back to original URL: {e}')
+        print(f'COS upload failed, falling back to original URL: {e}', file=sys.stderr)
         return None
 
 

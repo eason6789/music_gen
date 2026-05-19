@@ -15,7 +15,7 @@ _client = CosS3Client(_config)
 
 
 def _generate_key(prefix='music', ext='mp3'):
-    return f'{prefix}/{uuid.uuid4().hex}.{ext}'
+    return f'music_gen/{prefix}/{uuid.uuid4().hex}.{ext}'
 
 
 def upload_bytes(data, key=None, prefix='music', content_type='audio/mpeg'):
