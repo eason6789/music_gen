@@ -514,7 +514,7 @@
                     document.getElementById('cover-lyrics').value = '';
                     document.getElementById('cover-file-name').textContent = '';
                     document.getElementById('audio-file-cover').value = '';
-                    coverAudioData = null;
+                    coverAudioFile = null;
                 }
 
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -541,11 +541,11 @@
         const audioUploadCover = document.getElementById('audio-upload-cover');
         const audioFileCover = document.getElementById('audio-file-cover');
         const coverFileName = document.getElementById('cover-file-name');
-        let coverAudioData = null;
+        let coverAudioFile = null;
         const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
         audioUploadCover.addEventListener('click', () => audioFileCover.click());
-        audioFileCover.addEventListener('change', async (e) => {
+        audioFileCover.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
@@ -553,16 +553,12 @@
                 showError('文件过大，最大支持 50MB');
                 audioFileCover.value = '';
                 coverFileName.textContent = '';
-                coverAudioData = null;
+                coverAudioFile = null;
                 return;
             }
 
             coverFileName.textContent = file.name;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                coverAudioData = e.target.result.split(',')[1];
-            };
-            reader.readAsDataURL(file);
+            coverAudioFile = file;
         });
 
         // 提交
@@ -641,22 +637,22 @@
                 const coverStyle = document.getElementById('cover-style').value.trim();
                 const coverLyrics = document.getElementById('cover-lyrics').value.trim();
 
-                if (!coverAudioData) { showError('请上传原曲音频'); return; }
+                if (!coverAudioFile) { showError('请上传原曲音频'); return; }
                 if (!coverStyle) { showError('请输入目标翻唱风格描述'); return; }
 
                 submitBtn.disabled = true;
                 loading.classList.add('show');
 
                 try {
+                    const formData = new FormData();
+                    formData.append('mode', 'cover');
+                    formData.append('file', coverAudioFile);
+                    formData.append('prompt', coverStyle);
+                    if (coverLyrics) formData.append('lyrics', coverLyrics);
+
                     const response = await fetch(`${API_BASE}/generate`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            mode: 'cover',
-                            audio_base64: coverAudioData,
-                            prompt: coverStyle,
-                            lyrics: coverLyrics || null
-                        })
+                        body: formData
                     });
                     if (!response.ok && response.status >= 500) {
                         showError(`服务器错误 (${response.status})，请稍后重试`);

@@ -1,46 +1,112 @@
 import os
 import uuid
+import tempfile
 import requests
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import base64
 from config import Config
+import cos_client
 
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
 CORS(app)
 
-# 本地开发时从 / 提供前端页面
+
 @app.route('/')
 def serve_frontend():
     return send_from_directory(app.static_folder, 'index.html')
 
-# MiniMax API 配置
+
 MINIMAX_API_KEY = Config.MINIMAX_API_KEY
 MINIMAX_API_URL = 'https://api.minimaxi.com/v1/music_generation'
 MINIMAX_COVER_PREPROCESS_URL = 'https://api.minimaxi.com/v1/music_cover_preprocess'
 
 
+def _save_to_cos(audio_url):
+    """下载 MiniMax OSS 音频并上传到 COS, 返回 COS URL"""
+    try:
+        cos_url, _ = cos_client.download_to_cos(audio_url)
+        return cos_url
+    except Exception as e:
+        print(f'COS upload failed, falling back to original URL: {e}')
+        return None
+
+
 @app.route('/api/health', methods=['GET'])
 def health():
-    """健康检查"""
     return jsonify({'status': 'ok', 'service': 'music-gen-api'})
+
+
+@app.route('/api/upload-audio', methods=['POST'])
+def upload_audio():
+    """上传音频文件到 COS, 同时返回 base64 供 MiniMax API 使用"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': '请上传音频文件'}), 400
+
+        file = request.files['file']
+        if not file.filename:
+            return jsonify({'error': '文件名为空'}), 400
+
+        file_size = 0
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)
+
+        if file_size == 0:
+            return jsonify({'error': '文件为空'}), 400
+
+        if file_size > 50 * 1024 * 1024:
+            return jsonify({'error': '文件大小不能超过 50MB'}), 400
+
+        audio_bytes = file.read()
+        audio_b64 = base64.b64encode(audio_bytes).decode('utf-8')
+
+        # 上传到 COS
+        try:
+            cos_url, cos_key = cos_client.upload_bytes(
+                audio_bytes,
+                prefix='uploads',
+                content_type=file.content_type or 'audio/mpeg'
+            )
+        except Exception as e:
+            print(f'COS upload error: {e}')
+            return jsonify({'error': f'文件上传失败: {str(e)}'}), 500
+
+        return jsonify({
+            'success': True,
+            'audio_base64': audio_b64,
+            'cos_url': cos_url,
+            'cos_key': cos_key,
+            'file_size': file_size
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/generate', methods=['POST'])
 def generate_music():
-    """
-    生成音乐
-    请求体:
-    - mode: "description" | "lyrics" | "cover"
-    - description: string (mode=description时)
-    - prompt_length: "500" | "1000" (mode=description时)
-    - song_name: string (mode=lyrics时, 可选)
-    - lyrics: string (mode=lyrics时, 必填)
-    - audio_base64: string (mode=cover时, 必填)
-    - prompt: string (mode=cover时, 必填)
-    """
     try:
-        data = request.get_json()
+        # 支持 multipart 文件上传 (cover 模式) 和 JSON
+        if request.is_json:
+            data = request.get_json()
+        elif request.form:
+            data = {k: v for k, v in request.form.items()}
+            if 'file' in request.files:
+                f = request.files['file']
+                if f and f.filename:
+                    file_size = 0
+                    f.seek(0, os.SEEK_END)
+                    file_size = f.tell()
+                    f.seek(0)
+                    if file_size > 50 * 1024 * 1024:
+                        return jsonify({'error': '文件大小不能超过 50MB'}), 400
+                    audio_bytes = f.read()
+                    data['audio_base64'] = base64.b64encode(audio_bytes).decode('utf-8')
+        else:
+            return jsonify({'error': '不支持的请求格式'}), 400
+
         mode = data.get('mode')
 
         headers = {
@@ -49,20 +115,17 @@ def generate_music():
         }
 
         if mode == 'description':
-            # 描述模式: 根据用户描述生成纯音乐/背景音乐
             description = data.get('description', '')
-
             if not description:
                 return jsonify({'error': '请输入描述'}), 400
-
             if len(description) > 500:
                 description = description[:500]
 
             payload = {
                 'model': 'music-2.6',
                 'prompt': description,
+                'lyrics_optimizer': True,
                 'is_instrumental': False,
-                'lyrics': '♪\n',
                 'output_format': 'url',
                 'audio_setting': {
                     'sample_rate': 44100,
@@ -72,10 +135,8 @@ def generate_music():
             }
 
         elif mode == 'lyrics':
-            # 模式2: 歌词生成
             song_name = data.get('song_name', '')
             lyrics = data.get('lyrics', '')
-
             if not lyrics:
                 return jsonify({'error': '歌词是必填的'}), 400
 
@@ -94,14 +155,12 @@ def generate_music():
             }
 
         elif mode == 'cover':
-            # 模式3: AI翻唱 — 两步流程: 先预处理, 再生成
             audio_base64 = data.get('audio_base64', '')
             prompt = data.get('prompt', '')
             lyrics = data.get('lyrics')
 
             if not audio_base64:
                 return jsonify({'error': '请上传原曲音频'}), 400
-
             if not prompt:
                 return jsonify({'error': '请输入目标翻唱风格描述'}), 400
 
@@ -129,7 +188,6 @@ def generate_music():
             audio_duration = preprocess_result.get('audio_duration')
             formatted_lyrics = preprocess_result.get('formatted_lyrics', '')
 
-            # 第二步: 翻唱生成
             payload = {
                 'model': 'music-cover',
                 'prompt': prompt,
@@ -143,22 +201,28 @@ def generate_music():
                 }
             }
 
-            # 使用用户提供的歌词，否则使用自动提取的歌词
             if lyrics:
                 payload['lyrics'] = lyrics
             elif formatted_lyrics:
                 payload['lyrics'] = formatted_lyrics
 
+            # 保存原曲到 COS
+            try:
+                audio_bytes = base64.b64decode(audio_base64)
+                cos_client.upload_bytes(audio_bytes, prefix='covers/original')
+            except Exception as e:
+                print(f'Failed to archive original audio to COS: {e}')
+
         else:
             return jsonify({'error': '无效的mode，请使用 description、lyrics 或 cover'}), 400
 
-        # 调用MiniMax API
+        # 调用 MiniMax API 生成音乐
         response = requests.post(
             MINIMAX_API_URL,
             headers=headers,
             json=payload,
-            timeout=90,  # 音乐生成通常 25-60 秒,90s 足够
-            proxies={'http': None, 'https': None}  # 绕过系统代理,避免proxy连接错误
+            timeout=90,
+            proxies={'http': None, 'https': None}
         )
 
         result = response.json()
@@ -173,20 +237,19 @@ def generate_music():
                 'error': f'MiniMax API错误: {result.get("base_resp", {}).get("status_msg", "未知错误")}'
             }), response.status_code
 
-        # 检查返回的状态
         music_data = result.get('data', {})
         status = music_data.get('status')
 
         if status == 2:
-            # 生成完成，返回音频URL
             audio_url = music_data.get('audio')
+            # 下载并转存到 COS
+            cos_url = _save_to_cos(audio_url)
             return jsonify({
                 'success': True,
-                'audio_url': audio_url,
+                'audio_url': cos_url or audio_url,
                 'extra_info': result.get('extra_info', {})
             })
         elif status == 1:
-            # 生成中
             trace_id = result.get('trace_id')
             return jsonify({
                 'success': True,
