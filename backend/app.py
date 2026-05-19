@@ -49,7 +49,7 @@ def generate_music():
         }
 
         if mode == 'description':
-            # 描述模式: 根据用户描述生成音乐，模型自行判断是否需要歌词
+            # 描述模式: 根据用户描述生成纯音乐/背景音乐
             description = data.get('description', '')
 
             if not description:
@@ -61,8 +61,7 @@ def generate_music():
             payload = {
                 'model': 'music-2.6',
                 'prompt': description,
-                'is_instrumental': False,
-                'lyrics': description,
+                'is_instrumental': True,
                 'output_format': 'url',
                 'audio_setting': {
                     'sample_rate': 44100,
