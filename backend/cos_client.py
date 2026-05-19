@@ -47,17 +47,21 @@ def upload_file(local_path, key=None, prefix='music'):
     return url, key
 
 
-def download_to_cos(source_url, prefix='music', ext='mp3'):
+def download_to_cos(source_url, prefix='music', ext='mp3', download_filename=None):
     """从外部 URL 下载文件并上传到 COS, 返回 COS URL"""
     resp = requests.get(source_url, timeout=120, proxies={'http': None, 'https': None})
     resp.raise_for_status()
     key = _generate_key(prefix, ext)
+    extra = {}
+    if download_filename:
+        extra['ContentDisposition'] = f"attachment; filename=\"{download_filename}\""
     _client.put_object(
         Bucket=Config.COS_BUCKET,
         Key=key,
         Body=resp.content,
         ContentType='audio/mpeg',
-        ACL='public-read'
+        ACL='public-read',
+        **extra
     )
     return f'{Config.COS_BASE_URL}/{key}', key
 

@@ -1,1 +1,6 @@
 .playwright-mcp/
+*.pyc
+__pycache__/
+.DS_Store
+*.log
+.env

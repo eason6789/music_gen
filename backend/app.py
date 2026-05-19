@@ -31,11 +31,11 @@ def _sanitize_filename(name):
     return name[:50] if name else 'music'
 
 
-def _save_to_cos(audio_url):
+def _save_to_cos(audio_url, download_filename=None):
     """下载 MiniMax OSS 音频并上传到 COS, 返回 COS URL"""
     try:
         print(f'[_save_to_cos] Downloading from: {audio_url[:80]}...', file=sys.stderr)
-        cos_url, cos_key = cos_client.download_to_cos(audio_url)
+        cos_url, cos_key = cos_client.download_to_cos(audio_url, download_filename=download_filename)
         print(f'[_save_to_cos] Uploaded to COS: {cos_url[:80]}', file=sys.stderr)
         return cos_url
     except Exception as e:
@@ -301,7 +301,7 @@ def generate_music():
         if gen_status == 2:
             audio_url = music_data.get('audio')
             print(f'[generate] MiniMax returned audio_url: {audio_url[:80] if audio_url else "EMPTY"}...', file=sys.stderr)
-            cos_url = _save_to_cos(audio_url)
+            cos_url = _save_to_cos(audio_url, download_filename=_sanitize_filename(song_title) + '.mp3' if song_title else None)
 
             resp_data = {
                 'success': True,
