@@ -15,7 +15,7 @@ LOCAL_DIR="/Users/easonlv/Code/music_gen"
 
 # 远程目录
 REMOTE_SERVER_DIR="/www/server/music_gen"
-REMOTE_WWW_DIR="/www/wwwroot/music_gen"
+REMOTE_WWW_DIR="/var/www/music_gen"
 
 echo "📦 同步后端代码..."
 sshpass -p '*7;Vf3@BkrzD,g+u' ssh -o StrictHostKeyChecking=no -p $REMOTE_PORT $REMOTE_HOST "mkdir -p $REMOTE_SERVER_DIR"

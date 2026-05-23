@@ -15,7 +15,7 @@ fi
 sed -i '/location \/claw\/management\//i\
     # music_gen 前端\
     location /music_gen/ {\
-        alias /www/wwwroot/music_gen/;\
+        alias /var/www/music_gen/;\
         index index.html;\
         try_files $uri $uri/ /index.html;\
     }\
@@ -36,7 +36,7 @@ sed -i '/location \/claw\/management\//i\
 sed -i '/location \/claw\/management\//i\
     # music_gen 前端\
     location /music_gen/ {\
-        alias /www/wwwroot/music_gen/;\
+        alias /var/www/music_gen/;\
         index index.html;\
         try_files $uri $uri/ /index.html;\
     }\
